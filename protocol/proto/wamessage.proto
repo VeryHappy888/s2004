@@ -1,0 +1,12 @@
+syntax = "proto2";
+
+message WAMessage {
+  // 文本消息
+  optional string CONVERSATION = 1;
+  optional SenderKeyGroupMessage SKMSG = 2;
+}
+
+message SenderKeyGroupMessage {
+  optional string GROUP_ID = 1;
+  optional bytes  SENDER_KEY = 2;
+}

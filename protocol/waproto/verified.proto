@@ -1,0 +1,12 @@
+syntax = "proto2";
+package waproto;
+
+message VerifiedName{
+   optional VerifiedOne verifiedOne=1;
+    message VerifiedOne{
+        optional uint64 verifiedOne1=1;
+        optional string verifiedOne2=2;
+        optional string verifiedOne4=4;
+    }
+    optional bytes verifiedTow=2;
+}

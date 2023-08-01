@@ -1,0 +1,48 @@
+package serializer
+
+import (
+	"encoding/hex"
+	"testing"
+	record2 "ws-go/libsignal/groups/state/record"
+	"ws-go/libsignal/protocol"
+	"ws-go/libsignal/state/record"
+)
+
+func TestProtoSenderKeySessionSerializer_Deserialize(t *testing.T) {
+	dhex := "0A73089594FBAD06122408011220E246EDA29E70C1765D721015A595194F7024EFB050465325811D3B8BEAA03CDB1A450A2105C79BF58097DC513E3CFC1268FE34EDBA5DA70CFEC05CECE0B9C98A153CF666021220B02F0494300E68D8743686CA1713BA0D93FC80C286D06EE5428AAA24FE02B97D"
+	d, err := hex.DecodeString(dhex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	senderKeySessionSerializer := &ProtoSenderKeySessionSerializer{}
+	sendKeyStateSerializer := &ProtoSenderKeyStateSerializer{}
+	a, _ := record2.NewSenderKeyFromBytes(d, senderKeySessionSerializer, sendKeyStateSerializer)
+	t.Log(hex.EncodeToString(a.Serialize()))
+}
+
+func TestProtoSenderKeyMessageSerializer_Deserialize(t *testing.T) {
+	dhex := "3308e0dab8fa0210001a20ac82aef037f80e7f6102a81a27ff10e18185ec4a099c7ff5c8e2ef94b9c4222a725756c618a104ee8e892d76fed7065c285da8c98d9cc1c29a83e6dc7cb2c5fd70075dd4945d9cbd604d81251e2fab4f1d45bcf766e76c18420dae12494b9708"
+	d, err := hex.DecodeString(dhex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = protocol.NewSenderKeyMessageFromBytes(d, &ProtoSenderKeyMessageSerializer{})
+}
+
+func TestProtoSessionSerializer_Deserialize(t *testing.T) {
+	protoSessionSerializer := ProtoSessionSerializer{}
+	protoStateSerializer := ProtoStateSerializer{}
+
+	recordData := "0ad30208031221052367ac4923657187e382906d0b203449b650e264f2a08002aa9f514492adae591a2105282c60808cc705d43726c366e3a76c3f4d2ecad5012588436e87d27cdc954e482220c84f43640fefa48fd22950a94faf805f892f2e3ea64cf3f8a5f4e05e59863db62800326b0a2105941a7e5491a8d3f38b616d7571c4548d836852af89fe5e16882921b72988367d122030f1b948e39aa7953bda11ebadd531366074ec6b63d2de6fe9bcedf397bf9f491a2408001220c58a611fb8a22d7da809949bb3dead918f7d3156744a744e1b42b074d713e9b63a490a2105c1116de188d23e15ea7b275ff412c8e6bcbf764bff90cc1610ea00748299be651a240801122036e006a5b9c941754e5f61ad53f3b561614043413e131c6a8cfa241d033055e950c1a1c68202589fb1b294066a2105ee9087ba4b18c672b85d777e8af2896ba99037f401597a70003056cef7fbc24a12fd0208031221052367ac4923657187e382906d0b203449b650e264f2a08002aa9f514492adae591a2105282c60808cc705d43726c366e3a76c3f4d2ecad5012588436e87d27cdc954e482220ba1447a107edbdc0818d8cdaec6474001ba763caed2844baac0201536c314113326b0a2105494be91967187f997ffcaf7082db6102feae0e4c2d60c5018165a3b9e5f85f55122038d916c4163bbc310e43cbc01df01cc86e44a55c85eafe97c4d41a0d70ce69621a2408031220b81cbcbd660d378a4e7cd046b70e73cf63f20c30cf2c84aeca77cf3bb57ec3ca3a490a2105e565340dc3f0b3d8fdc677adfc45fcce4583ee79ad4d58d4ff1f1ce702ed22721a2408001220b1d58b7bcf618441d3f57a2f4fabb162e790dceb2acb5a4911c516603c2dadab4a2a08371221055876325106f44c8f12ca7c73b0eba5cfc2b2144a97a189c5368663497942475618d68ea20350c1a1c68202589fb1b294066a21055876325106f44c8f12ca7c73b0eba5cfc2b2144a97a189c536866349794247561200"
+	recordBytes, err := hex.DecodeString(recordData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	session, err := record.NewSessionFromBytes(recordBytes, &protoSessionSerializer, &protoStateSerializer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(session)
+}
