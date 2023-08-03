@@ -19,14 +19,13 @@ func SendRegisterSmsService(dto dto.SendVerifyCodeDto) vo.Resp {
 		Lg:       dto.Lg,
 		WAId:     dto.Phone,
 		Proxy:    dto.Socks5,
-		DeEnv:    register.AndroidVersion(),
-		DeConfig: register.GenerateWAConfig(),
+		DeEnv:    register.Version(dto.Platform),
+		DeConfig: register.GenerateWAConfig(dto.Lc),
 	}
 	cc := strconv.Itoa(int(dto.Cc))
 	//添加参数
 	_, err := r.ExistsRequest(cc, dto.Phone)
 	if err != nil {
-		fmt.Println(err.Error())
 		return vo.AnErrorOccurred(err)
 	}
 	key := fmt.Sprintf("whatsapp:sms:%v%v", cc, dto.Phone)
@@ -38,11 +37,9 @@ func SendRegisterSmsService(dto dto.SendVerifyCodeDto) vo.Resp {
 	}
 	resp, err := r.RequestVerifyCode(cc, dto.Phone, Method)
 	if err != nil {
-		fmt.Println(err.Error())
 		return vo.AnErrorOccurred(err)
 	}
-	fmt.Println(resp)
-	return vo.Success(resp, "ANDROID", "ok")
+	return vo.Success(resp, register.GetPlatform(dto.Platform), "ok")
 }
 
 // SendBusinessRegisterSmsService 发送商业版注册验证码
@@ -55,14 +52,13 @@ func SendBusinessRegisterSmsService(dto dto.SendVerifyCodeDto) vo.Resp {
 		Lg:       dto.Lg,
 		WAId:     dto.Phone,
 		Proxy:    dto.Socks5,
-		DeEnv:    register.AndroidBusinessVersion(),
-		DeConfig: register.GenerateWAConfig(),
+		DeEnv:    register.Version(dto.Platform),
+		DeConfig: register.GenerateWAConfig(dto.Lc),
 	}
 	cc := strconv.Itoa(int(dto.Cc))
 	//添加参数
 	_, err := r.BusinessExistRequest(cc, dto.Phone)
 	if err != nil {
-		fmt.Println(err.Error())
 		return vo.AnErrorOccurred(err)
 	}
 	key := fmt.Sprintf("whatsapp:business-sms:%v%v", cc, dto.Phone)
@@ -74,10 +70,9 @@ func SendBusinessRegisterSmsService(dto dto.SendVerifyCodeDto) vo.Resp {
 	}
 	resp, err := r.RequestVerifyCode(cc, dto.Phone, Method)
 	if err != nil {
-		fmt.Println(err.Error())
 		return vo.AnErrorOccurred(err)
 	}
-	return vo.Success(resp, "PLATFORM_10", "ok")
+	return vo.Success(resp, register.GetPlatform(dto.Platform), "ok")
 }
 
 // SendRegisterVerify 注册验证
@@ -90,7 +85,7 @@ func SendRegisterService(dto dto.SendRegisterVerifyDto) vo.Resp {
 		Lg:    dto.Lg,
 		WAId:  dto.Phone,
 		Proxy: dto.Socks5,
-		DeEnv: register.AndroidVersion(),
+		DeEnv: register.Version(dto.Platform),
 	}
 	v := &register.WAConfig{}
 	cc := strconv.Itoa(int(dto.Cc))
@@ -117,9 +112,9 @@ func SendRegisterService(dto dto.SendRegisterVerifyDto) vo.Resp {
 		return vo.AnErrorOccurred(err)
 	}
 	if resp.Status == "ok" {
-		return vo.Success(r.DeConfig.GenConfigJson(resp.EdgeRoutingInfo), "ANDROID", "ok")
+		return vo.Success(r.DeConfig.GenConfigJson(resp.EdgeRoutingInfo), register.GetPlatform(dto.Platform), "ok")
 	}
-	return vo.Success(resp, "ANDROID", "ok")
+	return vo.Success(resp, register.GetPlatform(dto.Platform), "ok")
 }
 
 // SendBusinessRegisterService 商业版注册验证
@@ -132,7 +127,7 @@ func SendBusinessRegisterService(dto dto.SendRegisterVerifyDto) vo.Resp {
 		Lg:    dto.Lg,
 		WAId:  dto.Phone,
 		Proxy: dto.Socks5,
-		DeEnv: register.AndroidBusinessVersion(),
+		DeEnv: register.Version(dto.Platform),
 	}
 	v := &register.WAConfig{}
 	cc := strconv.Itoa(int(dto.Cc))
@@ -159,9 +154,9 @@ func SendBusinessRegisterService(dto dto.SendRegisterVerifyDto) vo.Resp {
 		return vo.AnErrorOccurred(err)
 	}
 	if resp.Status == "ok" {
-		return vo.Success(r.DeConfig.GenConfigJson(resp.EdgeRoutingInfo), "PLATFORM_10", "ok")
+		return vo.Success(r.DeConfig.GenConfigJson(resp.EdgeRoutingInfo), register.GetPlatform(dto.Platform), "ok")
 	}
-	return vo.Success(resp, "PLATFORM_10", "ok")
+	return vo.Success(resp, register.GetPlatform(dto.Platform), "ok")
 }
 
 // SendRegisterVerify 查询账号是否存在
@@ -174,8 +169,8 @@ func GetPhoneExistService(dto dto.SendVerifyCodeDto) vo.Resp {
 		Lg:       "en",
 		WAId:     dto.Phone,
 		Proxy:    dto.Socks5,
-		DeEnv:    register.AndroidVersion(),
-		DeConfig: register.GenerateWAConfig(),
+		DeEnv:    register.Version(dto.Platform),
+		DeConfig: register.GenerateWAConfig("US"),
 	}
 	r.DeConfig = r.DeConfig.SetRegistrationVal()
 	//添加参数
@@ -185,7 +180,7 @@ func GetPhoneExistService(dto dto.SendVerifyCodeDto) vo.Resp {
 		fmt.Println(err.Error())
 		return vo.AnErrorOccurred(err)
 	}
-	return vo.Success(resp, "ANDROID", "ok")
+	return vo.Success(resp, register.GetPlatform(dto.Platform), "ok")
 }
 
 // GetBusinessPhoneExistService 查询商业版账号是否存在
@@ -198,8 +193,8 @@ func GetBusinessPhoneExistService(dto dto.SendVerifyCodeDto) vo.Resp {
 		Lg:       "en",
 		WAId:     dto.Phone,
 		Proxy:    dto.Socks5,
-		DeEnv:    register.AndroidBusinessVersion(),
-		DeConfig: register.GenerateWAConfig(),
+		DeEnv:    register.Version(dto.Platform),
+		DeConfig: register.GenerateWAConfig("US"),
 	}
 	r.DeConfig = r.DeConfig.SetRegistrationVal()
 	//添加参数
@@ -209,5 +204,5 @@ func GetBusinessPhoneExistService(dto dto.SendVerifyCodeDto) vo.Resp {
 		fmt.Println(err.Error())
 		return vo.AnErrorOccurred(err)
 	}
-	return vo.Success(resp, "PLATFORM_10", "ok")
+	return vo.Success(resp, register.GetPlatform(dto.Platform), "ok")
 }

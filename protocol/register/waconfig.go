@@ -144,14 +144,22 @@ func randSeq(n int) string {
 }
 
 // GenerateWAConfig 生成随机设备配置
-func GenerateWAConfig() *WAConfig {
+func GenerateWAConfig(iso string) *WAConfig {
 	var err error
 	config := &WAConfig{}
-	config.SimMnc = "010"
-	config.SimMcc = "234"
+	config.SimMnc = "234"
+	config.SimMcc = "012"
 
-	config.MCC = "460"
-	config.MNC = "001"
+	config.MCC = "234"
+	config.MNC = "011"
+
+	if iso != "" {
+		isp := ISP(iso)
+		config.SimMnc = isp.MNC
+		config.SimMcc = isp.MCC
+		config.MCC = isp.MCC
+		config.MNC = "000"
+	}
 
 	config.FDid = guuid.New().String()
 

@@ -8,19 +8,19 @@ import (
 	"fmt"
 )
 
-//  环境
+// 环境
 type Env interface {
-	GetToken(phone string) string
+	GetToken(phone string, sign ...string) (string, error)
 	WAUserAgent() string
 	DeviceName() string
+	EnvInfo() *EnvBase
 }
 
 func TestToken(phone, key, dexMd5, sig string) (string, error) {
-	return androidCalcWAToken(phone, key, dexMd5, sig)
+	return CalcWATokenA(phone, key, dexMd5, sig)
 }
 
-//
-func androidCalcWAToken(phone, key, dexMd5, sig string) (string, error) {
+func CalcWATokenA(phone, key, dexMd5, sig string) (string, error) {
 	var sourceData string
 	var err error
 	if len(phone) == 0 || len(key) == 0 || len(dexMd5) == 0 || len(sig) == 0 {

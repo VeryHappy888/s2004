@@ -67,7 +67,7 @@ func (r *WaRegistration) createReqTask(api string, params *url.Values) *WaReques
 			}
 			//task.setReqData(enAfterData)
 			reqData := append(keyPair.PublicKey().Serialize()[1:], enAfterData...)
-			task.Parameter.Add("ENC", base64.StdEncoding.EncodeToString(reqData))
+			task.Parameter.Add("ENC", base64.RawStdEncoding.EncodeToString(reqData))
 			return nil
 		},
 	}
@@ -78,10 +78,22 @@ func (r *WaRegistration) ExistsRequest(cc, phone string) (result *ExistsResult, 
 	if len(cc) == 0 || len(phone) == 0 {
 		return
 	}
+
+	Token, err := r.DeEnv.GetToken(phone)
+
+	if err != nil {
+		return nil, err
+	}
+
 	params := GenWARegistrationParams(cc, phone, r.DeConfig, r)
-	params.Add("token", r.DeEnv.GetToken(phone))
 	params.Del("offline_ab")
-	params.Add("offline_ab", "{\"exposure\":[\"registration_offline_universe_release|funnel_logging|test\"],\"metrics\":{}}")
+	if r.DeEnv.EnvInfo().PLATFORM == "android" {
+		params.Add("token", Token)
+		params.Add("offline_ab", "{\"exposure\":[\"registration_offline_universe_release|funnel_logging|test\"],\"metrics\":{}}")
+	} else {
+		params.Del("read_phone_permission_granted")
+		params.Add("offline_ab", `{"exposure":["dummy_aa_offline_rid_universe_ios|dummy_aa_offline_rid_experiment_ios|test"],"metrics":{"rc_old":true,"fdid_c":true,"expid_md":0,"expid_cd":0}}`)
+	}
 	// 创建WA请求任务
 	fmt.Println("查询号码状态", params.Encode())
 	bytes, err := r.createReqTask("https://v.whatsapp.net/v2/exist?", params).Execute()
@@ -98,8 +110,14 @@ func (r *WaRegistration) BusinessExistRequest(cc, phone string) (result *ExistsR
 	if len(cc) == 0 || len(phone) == 0 {
 		return
 	}
+
+	Token, err := r.DeEnv.GetToken(phone)
+	if err != nil {
+		return nil, err
+	}
+
 	params := GenWARegistrationParams(cc, phone, r.DeConfig, r)
-	params.Add("token", r.DeEnv.GetToken(phone))
+	params.Add("token", Token)
 	params.Del("offline_ab")
 	params.Add("offline_ab", "{\"exposure\":[],\"metrics\":{}}")
 	// 创建WA请求任务
@@ -124,12 +142,15 @@ func (r *WaRegistration) FinishRegistration(cc, phone, code string) (result *Reg
 	params.Del("offline_ab")
 	params.Del("sim_state")
 	params.Del("client_metrics")
-	params.Add("client_metrics", `{"attempts":1}`)
-	params.Add("sim_mcc", "234")
+	isp := ISP(cc)
+	if r.DeEnv.EnvInfo().PLATFORM == "android" {
+		params.Add("client_metrics", `{"attempts":1}`)
+		params.Add("sim_mcc", isp.MCC)
+		params.Add("sim_mnc", isp.MNC)
+		params.Add("mnc", "000")
+		params.Add("mcc", isp.MCC)
+	}
 	params.Add("entered", "1")
-	params.Add("mnc", "000")
-	params.Add("sim_mnc", "010")
-	params.Add("mcc", "460")
 	params.Add("code", code)
 	fmt.Println("注册请求验证码->", params.Encode())
 	// 创建WA请求任务
@@ -186,7 +207,7 @@ func (r *WaRegistration) FinishBusinessRegistration(cc, phone, code string) (res
 	byteSign := ecc.Sign(&r.DeConfig.EIdentPrivate, message, random)
 	vName.VerifiedTow = byteSign[:]
 	byteVName, _ := proto.Marshal(&vName)
-	params.Add("vname", base64.RawURLEncoding.EncodeToString(byteVName))
+	params.Add("vname", base64.RawStdEncoding.EncodeToString(byteVName))
 	fmt.Println("注册请求验证码->", params.Encode())
 	// 创建WA请求任务
 	bytes, err := r.createReqTask("https://v.whatsapp.net/v2/register?", params).Execute()
@@ -220,6 +241,13 @@ func (r *WaRegistration) RequestVerifyCode(cc, phone string, method VerifyMethod
 	if len(cc) == 0 || len(phone) == 0 {
 		return
 	}
+
+	Token, err := r.DeEnv.GetToken(phone)
+
+	if err != nil {
+		return nil, err
+	}
+
 	r.DeConfig.In = phone
 	// 生成默认请求参数
 	params := GenWARegistrationParams(cc, phone, r.DeConfig, r)
@@ -228,16 +256,22 @@ func (r *WaRegistration) RequestVerifyCode(cc, phone string, method VerifyMethod
 	params.Del("offline_ab")
 	params.Del("sim_state")
 	params.Del("sim_operator_name") //hasav
-	params.Add("mcc", r.DeConfig.MCC)
-	params.Add("mnc", r.DeConfig.MNC)
+	if r.DeEnv.EnvInfo().PLATFORM == "android" {
+		params.Add("mcc", r.DeConfig.MCC)
+		params.Add("mnc", r.DeConfig.MNC)
+	}
 	params.Add("sim_mcc", r.DeConfig.SimMcc)
 	params.Add("sim_mnc", r.DeConfig.SimMnc)
 	params.Add("method", string(method))
-	params.Add("reason", "")
-	params.Add("token", r.DeEnv.GetToken(phone))
-	params.Del("client_metrics")
-	params.Add("client_metrics", "{\"attempts\":1}")
-	params.Add("hasav", "2")
+	if r.DeEnv.EnvInfo().PLATFORM == "android" {
+		params.Add("reason", "")
+	}
+	params.Add("token", Token)
+	if r.DeEnv.EnvInfo().PLATFORM == "android" {
+		params.Del("client_metrics")
+		params.Add("client_metrics", "{\"attempts\":1}")
+		params.Add("hasav", "2")
+	}
 	fmt.Println("请求验证码", params.Encode())
 	// 创建WA请求任务
 	bytes, err := r.createReqTask("https://v.whatsapp.net/v2/code?", params).Execute()
@@ -256,6 +290,12 @@ func (r *WaRegistration) RequestBusinessVerifyCode(cc, phone string, method Veri
 	if len(cc) == 0 || len(phone) == 0 {
 		return
 	}
+
+	Token, err := r.DeEnv.GetToken(phone)
+	if err != nil {
+		return nil, err
+	}
+
 	r.DeConfig.In = phone
 	// 生成默认请求参数
 	params := GenWARegistrationParams(cc, phone, r.DeConfig, r)
@@ -270,7 +310,7 @@ func (r *WaRegistration) RequestBusinessVerifyCode(cc, phone string, method Veri
 	params.Add("sim_mnc", r.DeConfig.SimMnc)
 	params.Add("method", string(method))
 	params.Add("reason", "")
-	params.Add("token", r.DeEnv.GetToken(phone))
+	params.Add("token", Token)
 	params.Del("client_metrics")
 	params.Add("client_metrics", "{\"attempts\":1}")
 	params.Add("hasav", "2")
@@ -366,7 +406,7 @@ func GenWARegistrationParams(cc string, phone string, deConfig *WAConfig, r *WaR
 		}
 	}()
 	if deConfig == nil {
-		deConfig = GenerateWAConfig()
+		deConfig = GenerateWAConfig(r.Lc)
 		deConfig.CC = cc
 		deConfig.In = phone
 	}
@@ -386,29 +426,31 @@ func GenWARegistrationParams(cc string, phone string, deConfig *WAConfig, r *WaR
 	} else {
 		parmas.Add("lg", "zh")
 	}
-	parmas.Add("mistyped", "7")
+	if r.DeEnv.EnvInfo().PLATFORM == "android" {
+		parmas.Add("mistyped", "7")
+	}
 	parmas.Add("offline_ab", "{\"exposure\":[],\"metrics\":{}}")
 	eRegId := make([]byte, 4)
 	binary.BigEndian.PutUint32(eRegId, deConfig.RegistrationId)
-	parmas.Add("e_regid", base64.RawURLEncoding.EncodeToString(eRegId))
+	parmas.Add("e_regid", base64.RawStdEncoding.EncodeToString(eRegId))
 
-	parmas.Add("e_keytype", base64.RawURLEncoding.EncodeToString([]byte{ecc.DjbType}))
+	parmas.Add("e_keytype", base64.RawStdEncoding.EncodeToString([]byte{ecc.DjbType}))
 	parmas.Add("e_ident", deConfig.EIdent)
 	if deConfig.EIdent == "" {
 		parmas.Del("e_ident")
-		parmas.Add("e_ident", base64.RawURLEncoding.EncodeToString(deConfig.IdentityKeyPair.PublicKey().Serialize()[1:]))
+		parmas.Add("e_ident", base64.RawStdEncoding.EncodeToString(deConfig.IdentityKeyPair.PublicKey().Serialize()[1:]))
 	}
 	eSkeyId := make([]byte, 4)
 	binary.BigEndian.PutUint32(eSkeyId, deConfig.SignedPreKey.ID())
 	parmas.Add("e_skey_id", deConfig.EsKeyId)
 	if deConfig.EsKeyId == "" {
 		parmas.Del("e_skey_id")
-		parmas.Add("e_skey_id", base64.RawURLEncoding.EncodeToString(eSkeyId[1:]))
+		parmas.Add("e_skey_id", base64.RawStdEncoding.EncodeToString(eSkeyId[1:]))
 	}
 	parmas.Add("e_skey_val", deConfig.EsKeyVal)
 	if deConfig.EsKeyVal == "" {
 		parmas.Del("e_skey_val")
-		parmas.Add("e_skey_val", base64.RawURLEncoding.EncodeToString(deConfig.SignedPreKey.KeyPair().PublicKey().Serialize()[1:]))
+		parmas.Add("e_skey_val", base64.RawStdEncoding.EncodeToString(deConfig.SignedPreKey.KeyPair().PublicKey().Serialize()[1:]))
 	}
 	parmas.Add("e_skey_sig", deConfig.EsKeySig)
 	if deConfig.EsKeySig == "" {
@@ -416,25 +458,31 @@ func GenWARegistrationParams(cc string, phone string, deConfig *WAConfig, r *WaR
 		signature := deConfig.SignedPreKey.Signature()
 		copy(eSkeySig[:], signature[:])
 		parmas.Del("e_skey_sig")
-		parmas.Add("e_skey_sig", base64.RawURLEncoding.EncodeToString(eSkeySig))
+		parmas.Add("e_skey_sig", base64.RawStdEncoding.EncodeToString(eSkeySig))
 	}
-	//backup_token
-	parmas.Add("backup_token", deConfig.BackupToken)
+
+	if r.DeEnv.EnvInfo().PLATFORM == "android" {
+		//backup_token
+		parmas.Add("backup_token", deConfig.BackupToken)
+	}
 	parmas.Add("fdid", deConfig.FDid)
 	parmas.Add("expid", deConfig.Exid)
-	parmas.Add("network_radio_type", "1")
-	parmas.Add("simnum", "0")
-	parmas.Add("hasinrc", "1")
-	parmas.Add("sim_state", "5")
-	parmas.Add("client_metrics", "{\"attempts\":1,\"was_activated_from_stub\":false}") //attempts请求次数
-	parmas.Add("network_operator_name", "CHINA MOBILE")
-	parmas.Add("sim_operator_name", "giffgaff")
-	pid := strconv.FormatInt(utils.RangeRand(18000, 18999), 10)
-	parmas.Add("pid", pid)
+
+	if r.DeEnv.EnvInfo().PLATFORM == "android" {
+		parmas.Add("network_radio_type", "1")
+		parmas.Add("simnum", "0")
+		parmas.Add("hasinrc", "1")
+		parmas.Add("sim_state", "5")
+		parmas.Add("client_metrics", "{\"attempts\":1,\"was_activated_from_stub\":false}") //attempts请求次数
+		parmas.Add("network_operator_name", "CHINA MOBILE")
+		parmas.Add("sim_operator_name", "giffgaff")
+		pid := strconv.FormatInt(utils.RangeRand(18000, 18999), 10)
+		parmas.Add("pid", pid)
+	}
 	parmas.Add("rc", "0")
 	parmas.Add("id", deConfig.Id)
 	if deConfig.AuthKey == "" {
-		authkey := base64.RawURLEncoding.EncodeToString(deConfig.ClientStaticKeyPair.PublicKey().Serialize()[1:])
+		authkey := base64.RawStdEncoding.EncodeToString(deConfig.ClientStaticKeyPair.PublicKey().Serialize()[1:])
 		parmas.Del("authkey")
 		parmas.Add("authkey", url.QueryEscape(authkey))
 	} else {
@@ -466,7 +514,7 @@ func (r *WaRegistration) clientLog(cc, phone, actionTaken, previousScreen, funne
 		return
 	}
 	if r.DeConfig == nil {
-		r.DeConfig = GenerateWAConfig()
+		r.DeConfig = GenerateWAConfig(r.Lc)
 		r.DeConfig.CC = cc
 		r.DeConfig.In = phone
 	}
@@ -487,21 +535,21 @@ func (r *WaRegistration) clientLog(cc, phone, actionTaken, previousScreen, funne
 	params.Add("id", r.DeConfig.Id)
 	eRegId := make([]byte, 4)
 	binary.BigEndian.PutUint32(eRegId, r.DeConfig.RegistrationId)
-	params.Add("e_regid", base64.RawURLEncoding.EncodeToString(eRegId))
+	params.Add("e_regid", base64.RawStdEncoding.EncodeToString(eRegId))
 	params.Add("e_skey_sig", r.DeConfig.EsKeySig)
 	if r.DeConfig.EsKeySig == "" {
 		eSkeySig := make([]byte, 64)
 		signature := r.DeConfig.SignedPreKey.Signature()
 		copy(eSkeySig[:], signature[:])
 		params.Del("e_skey_sig")
-		params.Add("e_skey_sig", base64.RawURLEncoding.EncodeToString(eSkeySig))
+		params.Add("e_skey_sig", base64.RawStdEncoding.EncodeToString(eSkeySig))
 	}
 	params.Add("action_taken", actionTaken)
 	params.Add("expid", r.DeConfig.Exid)
 	params.Add("e_ident", r.DeConfig.EIdent)
 	if r.DeConfig.EIdent == "" {
 		params.Del("e_ident")
-		params.Add("e_ident", base64.RawURLEncoding.EncodeToString(r.DeConfig.IdentityKeyPair.PublicKey().Serialize()[1:]))
+		params.Add("e_ident", base64.RawStdEncoding.EncodeToString(r.DeConfig.IdentityKeyPair.PublicKey().Serialize()[1:]))
 	}
 	params.Add("previous_screen", previousScreen)
 	eSkeyId := make([]byte, 4)
@@ -509,19 +557,19 @@ func (r *WaRegistration) clientLog(cc, phone, actionTaken, previousScreen, funne
 	params.Add("e_skey_id", r.DeConfig.EsKeyId)
 	if r.DeConfig.EsKeyId == "" {
 		params.Del("e_skey_id")
-		params.Add("e_skey_id", base64.RawURLEncoding.EncodeToString(eSkeyId[1:]))
+		params.Add("e_skey_id", base64.RawStdEncoding.EncodeToString(eSkeyId[1:]))
 	}
 	params.Add("fdid", r.DeConfig.FDid)
 	params.Add("funnel_id", funnelId)
 	params.Add("e_skey_val", r.DeConfig.EsKeyVal)
 	if r.DeConfig.EsKeyVal == "" {
 		params.Del("e_skey_val")
-		params.Add("e_skey_val", base64.RawURLEncoding.EncodeToString(r.DeConfig.SignedPreKey.KeyPair().PublicKey().Serialize()[1:]))
+		params.Add("e_skey_val", base64.RawStdEncoding.EncodeToString(r.DeConfig.SignedPreKey.KeyPair().PublicKey().Serialize()[1:]))
 	}
-	params.Add("e_keytype", base64.RawURLEncoding.EncodeToString([]byte{ecc.DjbType}))
+	params.Add("e_keytype", base64.RawStdEncoding.EncodeToString([]byte{ecc.DjbType}))
 	params.Add("current_screen", currentScreen)
 	if r.DeConfig.AuthKey == "" {
-		authkey := base64.RawURLEncoding.EncodeToString(r.DeConfig.ClientStaticKeyPair.PublicKey().Serialize()[1:])
+		authkey := base64.RawStdEncoding.EncodeToString(r.DeConfig.ClientStaticKeyPair.PublicKey().Serialize()[1:])
 		params.Del("authkey")
 		params.Add("authkey", url.QueryEscape(authkey))
 	} else {

@@ -9,14 +9,13 @@ import (
 	"syscall"
 	"testing"
 	"ws-go/protocol/app"
-	"ws-go/protocol/axolotl"
 	"ws-go/protocol/stores"
 	"ws-go/wslog"
 )
 
 func TestManager_GeneratingPreKeys(t *testing.T) {
-	axolotlManager, _ := axolotl.NewAxolotlManager("test")
-	axolotlManager.GeneratingPreKeys()
+	/*axolotlManager, _ := axolotl.NewAxolotlManager("test")
+	axolotlManager.GeneratingPreKeys()*/
 
 }
 

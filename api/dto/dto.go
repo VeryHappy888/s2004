@@ -29,12 +29,13 @@ type LoginDto struct {
 
 // 注册
 type SendVerifyCodeDto struct {
-	Cc     int32  //区号
-	Phone  string //电话
-	Method int    // 默认0为短信验证码 1为语音验证码
-	Lc     string //国家
-	Lg     string //语言
-	Socks5 string // socks 5 代理
+	Cc       int32  `json:"cc"`       //区号
+	Phone    string `json:"phone"`    //电话
+	Method   int    `json:"method"`   // 默认0为短信验证码 1为语音验证码
+	Lc       string `json:"lc"`       //国家
+	Lg       string `json:"lg"`       //语言
+	Socks5   string `json:"socks5"`   // socks 5 代理
+	Platform int    `json:"platform"` //协议平台 101安卓普通版本 102安卓商业版本 201苹果普通版 202苹果商业版
 }
 
 // 注册验证
@@ -46,9 +47,10 @@ type SendRegisterVerifyDto struct {
 	// socks 5 代理
 	Socks5 string
 	//code
-	Code string
-	Lc   string //国家
-	Lg   string //语言
+	Code     string
+	Lc       string //国家
+	Lg       string //语言
+	Platform int    //协议平台 101安卓普通版本 102安卓商业版本 201苹果普通版 202苹果商业版
 }
 
 // MessageDto 消息
