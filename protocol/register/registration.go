@@ -74,6 +74,32 @@ func (r *WaRegistration) createReqTask(api string, params *url.Values) *WaReques
 	return task
 }
 
+func (r *WaRegistration) createReqTask2(api string, params string) *WaRequestTask {
+	p, err := url.Parse(r.Proxy)
+	if err != nil {
+		panic(errors.New("proxy fail"))
+	}
+	task := &WaRequestTask{
+		HttpProxy:  p,
+		Api:        api,
+		Parameter:  &url.Values{},
+		HttpMethod: http.MethodGet,
+		Header:     DefaultWAHeader(r.DeEnv),
+		OptionMethod: func(task *WaRequestTask) error {
+			keyPair, _ := ecc.GenerateKeyPair()
+			enAfterData, err := r.EncodeParams(params, keyPair)
+			if err != nil {
+				return err
+			}
+			//task.setReqData(enAfterData)
+			reqData := append(keyPair.PublicKey().Serialize()[1:], enAfterData...)
+			task.Parameter.Add("ENC", base64.RawStdEncoding.EncodeToString(reqData))
+			return nil
+		},
+	}
+	return task
+}
+
 func (r *WaRegistration) ExistsRequest(cc, phone string) (result *ExistsResult, err error) {
 	if len(cc) == 0 || len(phone) == 0 {
 		return
@@ -92,7 +118,7 @@ func (r *WaRegistration) ExistsRequest(cc, phone string) (result *ExistsResult, 
 		params.Add("offline_ab", "{\"exposure\":[\"registration_offline_universe_release|funnel_logging|test\"],\"metrics\":{}}")
 	} else {
 		params.Del("read_phone_permission_granted")
-		params.Add("offline_ab", `{"exposure":["dummy_aa_offline_rid_universe_ios|dummy_aa_offline_rid_experiment_ios|test"],"metrics":{"rc_old":true,"fdid_c":true,"expid_md":0,"expid_cd":0}}`)
+		params.Add("offline_ab", `{"exposure":["dummy_aa_offline_rid_universe_ios|dummy_aa_offline_rid_experiment_ios|test"],"metrics":{}}`)
 	}
 	// 创建WA请求任务
 	fmt.Println("查询号码状态", params.Encode())
@@ -266,15 +292,28 @@ func (r *WaRegistration) RequestVerifyCode(cc, phone string, method VerifyMethod
 	if r.DeEnv.EnvInfo().PLATFORM == "android" {
 		params.Add("reason", "")
 	}
+	params.Add("cellular_strengt", "2")
 	params.Add("token", Token)
 	if r.DeEnv.EnvInfo().PLATFORM == "android" {
 		params.Del("client_metrics")
 		params.Add("client_metrics", "{\"attempts\":1}")
 		params.Add("hasav", "2")
 	}
-	fmt.Println("请求验证码", params.Encode())
-	// 创建WA请求任务
-	bytes, err := r.createReqTask("https://v.whatsapp.net/v2/code?", params).Execute()
+
+	var bytes []byte
+
+	if r.DeEnv.EnvInfo().PLATFORM == "Apple" {
+		T := params.Encode()
+		T += fmt.Sprintf("&id=%v", RandID(16))
+		// 创建WA请求任务
+		fmt.Println("请求验证码", T)
+		bytes, err = r.createReqTask2("https://v.whatsapp.net/v2/code?", T).Execute()
+	} else {
+		// 创建WA请求任务
+		fmt.Println("请求验证码", params.Encode())
+		bytes, err = r.createReqTask("https://v.whatsapp.net/v2/code?", params).Execute()
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -430,6 +469,7 @@ func GenWARegistrationParams(cc string, phone string, deConfig *WAConfig, r *WaR
 		parmas.Add("mistyped", "7")
 	}
 	parmas.Add("offline_ab", "{\"exposure\":[],\"metrics\":{}}")
+
 	eRegId := make([]byte, 4)
 	binary.BigEndian.PutUint32(eRegId, deConfig.RegistrationId)
 	parmas.Add("e_regid", base64.RawStdEncoding.EncodeToString(eRegId))
@@ -440,6 +480,7 @@ func GenWARegistrationParams(cc string, phone string, deConfig *WAConfig, r *WaR
 		parmas.Del("e_ident")
 		parmas.Add("e_ident", base64.RawStdEncoding.EncodeToString(deConfig.IdentityKeyPair.PublicKey().Serialize()[1:]))
 	}
+
 	eSkeyId := make([]byte, 4)
 	binary.BigEndian.PutUint32(eSkeyId, deConfig.SignedPreKey.ID())
 	parmas.Add("e_skey_id", deConfig.EsKeyId)
@@ -447,6 +488,7 @@ func GenWARegistrationParams(cc string, phone string, deConfig *WAConfig, r *WaR
 		parmas.Del("e_skey_id")
 		parmas.Add("e_skey_id", base64.RawStdEncoding.EncodeToString(eSkeyId[1:]))
 	}
+
 	parmas.Add("e_skey_val", deConfig.EsKeyVal)
 	if deConfig.EsKeyVal == "" {
 		parmas.Del("e_skey_val")
@@ -480,7 +522,10 @@ func GenWARegistrationParams(cc string, phone string, deConfig *WAConfig, r *WaR
 		parmas.Add("pid", pid)
 	}
 	parmas.Add("rc", "0")
-	parmas.Add("id", deConfig.Id)
+	if r.DeEnv.EnvInfo().PLATFORM == "android" {
+		parmas.Add("id", deConfig.Id)
+	}
+
 	if deConfig.AuthKey == "" {
 		authkey := base64.RawStdEncoding.EncodeToString(deConfig.ClientStaticKeyPair.PublicKey().Serialize()[1:])
 		parmas.Del("authkey")

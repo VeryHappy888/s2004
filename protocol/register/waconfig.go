@@ -1,6 +1,7 @@
 package register
 
 import (
+	crand "crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
@@ -158,10 +159,10 @@ func GenerateWAConfig(iso string) *WAConfig {
 		config.SimMnc = isp.MNC
 		config.SimMcc = isp.MCC
 		config.MCC = isp.MCC
-		config.MNC = "000"
+		config.MNC = isp.MNC
 	}
 
-	config.FDid = guuid.New().String()
+	config.FDid = strings.ToUpper(guuid.New().String())
 
 	exidData := []byte(strings.ReplaceAll(guuid.New().String(), "-", "")[:16])
 	config.Exid = base64.StdEncoding.EncodeToString(exidData)
@@ -189,4 +190,27 @@ func GenerateWAConfig(iso string) *WAConfig {
 	tokenData := []byte(strings.ReplaceAll(guuid.New().String(), "-", "")[0:15])
 	config.BackupToken = base64.StdEncoding.EncodeToString(tokenData)
 	return config
+}
+
+func printStringWithSymbol(input string, interval int, symbol string) string {
+	count := 1
+	txt := ""
+	for _, char := range input {
+		count++
+		if count%interval == 0 && count/interval < len(input) {
+			txt += symbol
+		}
+		txt += string(char)
+	}
+	return txt
+}
+
+func RandID(c int) string {
+	b := make([]byte, c)
+	crand.Read(b)
+	var ss []string
+	for _, v := range b {
+		ss = append(ss, fmt.Sprintf("%%%02X", v))
+	}
+	return strings.Join(ss, "")
 }
