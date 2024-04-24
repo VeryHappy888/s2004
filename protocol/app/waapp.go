@@ -201,7 +201,7 @@ func (w *WaApp) SetLoginStatusText(loginStatus LoginStatus, text string) {
 // WALogin
 func (w *WaApp) WALogin() _interface.IPromise {
 	w.mutex.Lock()
-	// 当socket 没有连接或登录状态不为在线时可执行登录
+	// 当socket 没有连接或登录状态不为在线时可执行登录0
 	if !w.netWork.Connected() || w.loginStatus != Online {
 		// 使用异步登录
 		executor := func(resolve func(promise.Any), reject func(error)) {

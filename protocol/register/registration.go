@@ -292,7 +292,7 @@ func (r *WaRegistration) RequestVerifyCode(cc, phone string, method VerifyMethod
 	if r.DeEnv.EnvInfo().PLATFORM == "android" {
 		params.Add("reason", "")
 	}
-	params.Add("cellular_strengt", "2")
+	params.Add("cellular_strength", "2")
 	params.Add("token", Token)
 	if r.DeEnv.EnvInfo().PLATFORM == "android" {
 		params.Del("client_metrics")
@@ -486,7 +486,7 @@ func GenWARegistrationParams(cc string, phone string, deConfig *WAConfig, r *WaR
 	parmas.Add("e_skey_id", deConfig.EsKeyId)
 	if deConfig.EsKeyId == "" {
 		parmas.Del("e_skey_id")
-		parmas.Add("e_skey_id", base64.RawStdEncoding.EncodeToString(eSkeyId[1:]))
+		parmas.Add("e_skey_id", base64.RawStdEncoding.EncodeToString(eSkeyId[:]))
 	}
 
 	parmas.Add("e_skey_val", deConfig.EsKeyVal)

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"os"
 	"os/signal"
@@ -35,6 +36,8 @@ func TestNetWork(t *testing.T) {
 		t.Fail()
 	}
 
+	fmt.Println(uaProto.GetLc())
+
 	/*uaProto.Username = proto.Uint64(447417595455)
 	uaProto.UserAgent.PhoneId = proto.String("")
 	uaProto.UserAgent.AppVersion.Secondary = proto.Uint32(21)
@@ -48,12 +51,12 @@ func TestNetWork(t *testing.T) {
 		return
 	}
 
-	routingInfo := []byte{0x08, 0x08, 0x08, 0x02}
+	routingInfo := []byte{}
 	noiseClient := network.NewNoiseClient(routingInfo, UAData, noise.DHKey{
 		Private: piarKey[:32],
 		Public:  piarKey[32:],
 	}, nil)
-	noiseClient.SetNetWorkProxy("socks5://127.0.0.1:51837")
+	noiseClient.SetNetWorkProxy("socks5://127.0.0.1:15733")
 	t.Log(noiseClient.Connect())
 
 	sigs := make(chan os.Signal, 1)

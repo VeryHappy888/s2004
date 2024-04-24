@@ -34,7 +34,10 @@ type EnvBase struct {
 
 func (a *EnvBase) GetToken(phone string, sign ...string) (string, error) {
 	if a.PLATFORM == "Apple" {
-		txt := fmt.Sprintf("%v%v%v", a.KEY, a.SIGNATURE, phone)
+		V := md5.New()
+		V.Write([]byte(a.VERSION))
+		V.Sum(nil)
+		txt := fmt.Sprintf("%v%v%v", a.KEY, hex.EncodeToString(V.Sum(nil)), phone)
 		h := md5.New()
 		h.Write([]byte(txt))
 		return hex.EncodeToString(h.Sum(nil)), nil

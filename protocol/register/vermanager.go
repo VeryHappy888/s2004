@@ -30,7 +30,7 @@ func Version(platform int) Env {
 		return &EnvBase{
 			SIGNATURE:  "fbeca3eaee50c730a1b7198f8e82f172",
 			KEY:        "0a1mLfGUIBVrMKF1RdvLI5lkRBvof6vn0fD2QRSM",
-			VERSION:    "2.23.14.79",
+			VERSION:    "2.24.5.75",
 			OSNAME:     "iOS",
 			OSVERSION:  "14.1",
 			DEVICENAME: "iPhone_X",

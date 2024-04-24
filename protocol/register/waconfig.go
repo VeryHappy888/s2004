@@ -180,7 +180,7 @@ func GenerateWAConfig(iso string) *WAConfig {
 		return nil
 	}
 
-	config.SignedPreKey, err = keyhelper.GenerateSignedPreKey(config.IdentityKeyPair, 0, &serialize.JSONSignedPreKeyRecordSerializer{})
+	config.SignedPreKey, err = keyhelper.GenerateSignedPreKey(config.IdentityKeyPair, uint32(rand.Int()), &serialize.JSONSignedPreKeyRecordSerializer{})
 	if err != nil {
 		fmt.Errorf(err.Error())
 		return nil
